@@ -1,0 +1,4 @@
+# Auth Types
+T_LOGIN = "LOGIN"
+T_REGISTER = "REGISTER"
+T_LOGOUT = "LOGOUT"
