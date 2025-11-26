@@ -1,5 +1,5 @@
 from ..packet import Packet
-from ..type import T_LOGIN, T_REGISTER, T_LOGOUT
+from ..type import T_LOGIN, T_REGISTER, T_LOGOUT, T_LIST_ONLINE_USERS
 
 
 class LoginPacket(Packet):
@@ -39,9 +39,24 @@ class LogoutPacket(Packet):
     Logout packet format:
     {
         "type": T_LOGOUT,
+        "data": {
+            "username": "username"
+        }
+    }
+    """
+
+    def __init__(self, username: str):
+        super().__init__(T_LOGOUT, {"username": username})
+
+
+class ListOnlineUsersPacket(Packet):
+    """
+    List online users packet format:
+    {
+        "type": T_LIST_ONLINE_USERS,
         "data": {}
     }
     """
 
     def __init__(self):
-        super().__init__(T_LOGOUT, {})
+        super().__init__(T_LIST_ONLINE_USERS, {})

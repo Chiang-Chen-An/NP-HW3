@@ -3,8 +3,24 @@ import os
 from datetime import datetime
 import socket
 from common.packet import Packet
-from common.type import T_LOGIN, T_REGISTER, T_LOGOUT
-from common.Packet.db import DBLoginPacket, DBRegisterPacket, DBLogoutPacket
+from common.type import (
+    T_LOGIN,
+    T_REGISTER,
+    T_LOGOUT,
+    T_LIST_ONLINE_USERS,
+    T_LIST_GAMES,
+    T_GET_GAME_DETAIL,
+    T_GAME_REVIEW,
+)
+from common.Packet.db import (
+    DBLoginPacket,
+    DBRegisterPacket,
+    DBLogoutPacket,
+    DBListGamesPacket,
+    DBListOnlineUsersPacket,
+    DBGameReviewPacket,
+    DBGetGameDetailPacket,
+)
 from common.log_utils import setup_logger
 
 
@@ -13,7 +29,8 @@ class DatabaseServer:
         self.port = port
         self.host = host
         self.database = {
-            "user": os.path.join(os.path.dirname(__file__), "data/users.json")
+            "user": os.path.join(os.path.dirname(__file__), "data/users.json"),
+            "game": os.path.join(os.path.dirname(__file__), "data/games.json"),
         }
         self.logger = setup_logger("DatabaseServer", "./logs/database_server.log")
 
@@ -41,6 +58,16 @@ class DatabaseServer:
             return self.handle_register(packet)
         elif packet.type == T_LOGOUT:
             return self.handle_logout(packet)
+        elif packet.type == T_LIST_ONLINE_USERS:
+            return self.handle_list_online_users(packet)
+        elif packet.type == T_LIST_GAMES:
+            return self.handle_list_games(packet)
+        elif packet.type == T_GET_GAME_DETAIL:
+            return self.handle_get_game_detail(packet)
+        elif packet.type == T_GAME_REVIEW:
+            return self.handle_game_review(packet)
+
+    # Handle Auth Packets
 
     def handle_login(self, packet: Packet):
         username = packet.data["username"]
@@ -107,3 +134,50 @@ class DatabaseServer:
 
         self.logger.info("Username not found")
         return DBLogoutPacket(False, "Username not found")
+
+    # Handle Game Packets
+
+    def handle_list_games(self, packet: Packet):
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+        for game in games:
+            if not game["comments"]:
+                game["average_rating"] = 0
+            else:
+                game["average_rating"] = sum(
+                    comment["rating"] for comment in game["comments"]
+                ) / len(game["comments"])
+        return DBListGamesPacket(True, games)
+
+    def handle_get_game_detail(self, packet: Packet):
+        game_id = packet.data["game_id"]
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+        for game in games:
+            if game["game_id"] == game_id:
+                return DBGetGameDetailPacket(True, game)
+        return DBGetGameDetailPacket(False, "Game not found")
+
+    def handle_game_review(self, packet: Packet):
+        game_id = packet.data["game_id"]
+        score = packet.data["score"]
+        comment = packet.data["comment"]
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+        for game in games:
+            if game["game_id"] == game_id:
+                game["comments"].append(
+                    {"username": "user", "rating": score, "comment": comment}
+                )
+                with open(self.database["game"], "w") as f:
+                    json.dump(games, f, indent=2)
+                return DBGameReviewPacket(True, "Review submitted successfully")
+        return DBGameReviewPacket(False, "Game not found")
+
+    # Query
+
+    def handle_list_online_users(self, packet: Packet):
+        with open(self.database["user"], "r") as f:
+            users = json.load(f)
+        online_users = [user["username"] for user in users if user["is_online"]]
+        return DBListOnlineUsersPacket(True, online_users)
