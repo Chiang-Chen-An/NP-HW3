@@ -33,6 +33,8 @@ Common module for the project.
 1. T_LIST_GAMES
 2. T_GET_GAME_DETAIL
 3. T_GAME_REVIEW
+4. T_CREATE_ROOM
+5. T_LIST_ROOMS
 
 #### User Packets
 
@@ -102,6 +104,7 @@ Common module for the project.
    ```
 
 3. GameReviewPacket
+
    ```json
    {
      "type": "GAME_REVIEW",
@@ -109,6 +112,61 @@ Common module for the project.
        "game_id": "1",
        "score": 5,
        "comment": "game1 comment"
+     }
+   }
+   ```
+
+4. CreateRoomPacket
+
+   ```json
+   {
+     "type": "CREATE_ROOM",
+     "data": {
+       "game_id": "1",
+       "host": "user1"
+     }
+   }
+   ```
+
+5. ListRoomsPacket
+
+   ```json
+   {
+     "type": "LIST_ROOMS",
+     "data": {}
+   }
+   ```
+
+6. ListRoomsPacketReply
+
+   ```json
+   {
+     "type": "LIST_ROOMS",
+     "data": {
+       "success": true,
+       "rooms": [
+         {
+           "room_id": "1",
+           "game_id": "1",
+           "max_players": 2,
+           "host": "user1",
+           "users": ["user1", "user2", ...],
+           "is_started": false,
+           "is_ended": false
+         },
+         ...
+       ]
+     }
+   }
+   ```
+
+7. CreateRoomPacketReply
+   ```json
+   {
+     "type": "CREATE_ROOM",
+     "data": {
+       "success": true,
+       "room_id": "1"
      }
    }
    ```
@@ -217,3 +275,30 @@ Database 回覆 lobby server 的封包
      }
    }
    ```
+
+## Context
+
+### UserContext
+
+定義一個使用者的資訊，包含使用者名稱和 socket
+
+```python
+class UserContext:
+    def __init__(self, username: str, socket: socket.socket):
+        self.username = username
+        self.socket = socket
+```
+
+### GameContext
+
+定義一個房間的資訊，包含房間 ID、房主、玩家列表、是否開始、是否結束
+
+```python
+class GameContext:
+    def __init__(self, game_id: int, host: str):
+        self.game_id = game_id
+        self.host = host
+        self.users = []
+        self.is_started = False
+        self.is_ended = False
+```

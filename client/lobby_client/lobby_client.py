@@ -8,6 +8,8 @@ from common.type import (
     T_GET_GAME_DETAIL,
     T_GAME_REVIEW,
     T_LIST_ONLINE_USERS,
+    T_LIST_ROOMS,
+    T_CREATE_ROOM,
 )
 from common.Packet.user import (
     LoginPacket,
@@ -15,8 +17,17 @@ from common.Packet.user import (
     LogoutPacket,
     ListOnlineUsersPacket,
 )
-from common.Packet.game import ListGamesPacket, GetGameDetailPacket, GameReviewPacket
+from common.Packet.game import (
+    ListGamesPacket,
+    GetGameDetailPacket,
+    GameReviewPacket,
+    ListRoomsPacket,
+    CreateRoomPacket,
+)
 from common.log_utils import setup_logger
+from pathlib import Path
+import os
+import json
 
 
 class UserContext:
@@ -30,6 +41,7 @@ class LobbyClient:
         self.host = host
         self.port = port
         self.user_context = None
+        self.users_game = {}
         self.logger = setup_logger("LobbyClient", "./logs/lobby_client.log")
 
     def start(self):
@@ -66,6 +78,8 @@ class LobbyClient:
                 if reply.type == T_LOGIN and reply.data["success"]:
                     self.logger.info(reply.data["message"])
                     self.user_context = UserContext(username, password)
+                    self.users_game = get_games_metadata_json(username)
+
                     return
                 else:
                     self.logger.info(reply.data["message"])
@@ -93,7 +107,7 @@ class LobbyClient:
     def handle_lobby(self, s: socket.socket):
         while True:
             print("=" * 50)
-            print(f"Welcome to the Lobby! {self.user_context.username}")
+            print(f"Welcome to the Lobby! {self.user_context.username}".center(50))
             print("=" * 50)
             print("1. List the available games")
             print("2. List online users")
@@ -252,3 +266,168 @@ class LobbyClient:
         else:
             self.logger.info(reply.data["message"])
             return False
+
+    def handle_play_game(self, s: socket.socket):
+        print("=" * 50)
+        print("PLAY GAME".center(50))
+        print("=" * 50)
+        print("1. Create Room")
+        print("2. List All Rooms")
+        print("3. Back to Main Menu")
+        cmd = input("Choose action: ").strip()
+        if cmd == "1":
+            self.handle_create_room(s)
+        elif cmd == "2":
+            self.handle_list_rooms(s)
+        elif cmd == "3":
+            return
+
+    def handle_create_room(self, s: socket.socket):
+        if len(self.users_game) == 0:
+            print("=" * 50)
+            print("No available games, please download games first")
+            print("=" * 50)
+            return
+        print("=" * 50)
+        print("CREATE ROOM".center(50))
+        print("=" * 50)
+        print(
+            f"{'ID':^{5}} | "
+            f"{'Name':^{15}} | "
+            f"{'Ver.':^{10}} | "
+            f"{'Max Players':^{11}}"
+        )
+
+        print("-" * 50)
+
+        for game in self.users_game:
+            name = game["name"]
+            if len(name) > 20:
+                name = name[: 20 - 2] + ".."
+
+            print(
+                f"{game['id']:^{5}} | "
+                f"{name:^{15}} | "
+                f"{game['version']:^{10}} | "
+                f"{str(game['max_players']):^{11}}",
+                sep="",
+            )
+        game_id = input("Enter Game ID: ").strip()
+        for game in self.users_game:
+            if game["id"] == game_id:
+                break
+        else:
+            print("Invalid game ID")
+            return
+        packet = CreateRoomPacket(game_id, self.user_context.username)
+        s.sendall(packet.to_bytes())
+        reply = Packet.receive(s)
+        if reply is None:
+            self.logger.error("Failed to receive response from server")
+            return
+        if reply.type == T_CREATE_ROOM and reply.data["success"]:
+            self.logger.info("Room created successfully")
+        else:
+            self.logger.info(reply.data["message"])
+
+    def handle_list_rooms(self, s: socket.socket):
+        packet = ListRoomsPacket()
+        s.sendall(packet.to_bytes())
+        reply = Packet.receive(s)
+        if reply is None:
+            self.logger.error("Failed to receive response from server")
+            return
+        if reply.type == T_LIST_ROOMS and reply.data["success"]:
+            self.logger.info("List Rooms")
+            if len(reply.data["rooms"]) == 0:
+                print("=" * 50)
+                print("No rooms".center(50))
+                print("=" * 50)
+                return
+            print("=" * 50)
+            print(
+                f"{'ID':^{3}} | "
+                f"{'Game':^{11}} | "
+                f"{'Owner':^{8}} | "
+                f"{'Players':^{8}} | "
+                f"{'Status':^{8}}"
+            )
+            print("-" * 50)
+
+            for room in reply.data["rooms"]:
+
+                g_name = room["game_name"]
+                if len(g_name) > 11:
+                    g_name = g_name[: 11 - 2] + ".."
+
+                current_players = len(room["players"])
+                p_count_str = f"{current_players}/{room['max_players']}"
+
+                status_str = "Running" if room["is_started"] else "Waiting"
+
+                print(
+                    f"{room['room_id']:^{3}} | "
+                    f"{g_name:^{11}} | "
+                    f"{room['room_owner']:^{8}} | "
+                    f"{p_count_str:^{8}} | "
+                    f"{status_str:^{8}}"
+                )
+            print("=" * 50)
+            # TODO: add join room
+        else:
+            self.logger.info(reply.data["message"])
+
+
+def get_games_metadata_json(username):
+    base_path = Path(f"./client/lobby_client/download/{username}")
+    games_data = []
+
+    if not base_path.exists():
+        os.makedirs(base_path)
+        return []
+
+    for game_dir in base_path.iterdir():
+        if game_dir.is_dir():
+
+            parsed_versions = []
+            for ver_dir in game_dir.iterdir():
+                if ver_dir.is_dir():
+                    dirname = ver_dir.name
+                    try:
+                        clean_name = dirname.lstrip("v")
+                        parts = [int(p) for p in clean_name.split(".")]
+                        parsed_versions.append((tuple(parts), dirname, ver_dir))
+                    except ValueError:
+                        continue
+
+            if not parsed_versions:
+                continue
+            _, latest_ver_name, latest_ver_path = max(
+                parsed_versions, key=lambda x: x[0]
+            )
+
+            config_path = latest_ver_path / "config.json"
+
+            if not config_path.exists():
+                print(f"警告: 在 {latest_ver_name} 中找不到 config.json")
+                continue
+
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                game_info = {
+                    "id": data.get("game_id"),
+                    "name": data.get("game_name"),
+                    "version": data.get("game_version", latest_ver_name),
+                    "max_players": data.get("max_players", 0),
+                }
+
+                games_data.append(game_info)
+
+            except json.JSONDecodeError:
+                print(f"錯誤: {config_path} 格式不正確 (不是有效的 JSON)")
+            except Exception as e:
+                print(f"讀取失敗: {e}")
+
+    return games_data

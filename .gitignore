@@ -3,3 +3,9 @@ logs
 .env
 
 __pycache__
+
+storage/
+
+download/
+
+workspace/

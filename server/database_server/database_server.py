@@ -25,7 +25,7 @@ from common.log_utils import setup_logger
 
 
 class DatabaseServer:
-    def __init__(self, port: int, host: str):
+    def __init__(self, port: int = 12345, host: str = "127.0.0.1"):
         self.port = port
         self.host = host
         self.database = {
@@ -181,3 +181,26 @@ class DatabaseServer:
             users = json.load(f)
         online_users = [user["username"] for user in users if user["is_online"]]
         return DBListOnlineUsersPacket(True, online_users)
+
+    # Room handler
+    # def handle_create_room(self, packet: Packet):
+    #     return DBCreateRoomPacket(True, "Room created successfully")
+
+    def get_game_max_players(self, game_id: int):
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+        for game in games:
+            if game["game_id"] == game_id:
+                return game["max_players"]
+        return 0
+
+    def get_game_name(self, game_id: int):
+        self.logger.info(f"Get game name: {game_id}")
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+        for game in games:
+            self.logger.info(f"Game id: {game['game_id']}")
+            if game["game_id"] == game_id:
+                self.logger.info(f"Game name: {game['game_name']}")
+                return game["game_name"]
+        return ""

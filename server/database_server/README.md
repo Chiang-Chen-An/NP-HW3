@@ -32,12 +32,13 @@ Database server for the project.
 ```json
 [
   {
-    "game_id": "1",
+    "game_id": 1,
     "game_name": "game1",
     "game_description": "game1 description",
     "game_version": "1.0.0",
     "game_author": "user",
     "download_count": 0,
+    "max_players": 2,
     "comments": [
       {
         "username": "user",
@@ -48,12 +49,13 @@ Database server for the project.
     "game_created_at": "2025-11-25T22:58:34+08:00"
   },
   {
-    "game_id": "2",
+    "game_id": 2,
     "game_name": "game2",
     "game_description": "game2 description",
     "game_version": "1.0.0",
     "game_author": "user",
     "download_count": 0,
+    "max_players": 2,
     "comments": [
       {
         "username": "user",
@@ -65,3 +67,7 @@ Database server for the project.
   }
 ]
 ```
+
+## Function
+
+### handle_login
