@@ -1,5 +1,5 @@
 class RoomContext:
-    def __init__(self, room_id: int, game_id: int, max_players: int, room_owner: str):
+    def __init__(self, room_id: str, game_id: str, max_players: int, room_owner: str):
         self.room_id = room_id
         self.game_id = game_id
         self.max_players = max_players

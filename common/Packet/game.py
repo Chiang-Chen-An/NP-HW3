@@ -26,8 +26,8 @@ class GameReviewPacket(Packet):
 
 
 class CreateRoomPacket(Packet):
-    def __init__(self, game_id: str, host: str):
-        super().__init__(T_CREATE_ROOM, {"game_id": game_id, "host": host})
+    def __init__(self, game_id: str, username: str):
+        super().__init__(T_CREATE_ROOM, {"game_id": game_id, "username": username})
 
 
 class CreateRoomPacketReply(Packet):

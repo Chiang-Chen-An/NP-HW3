@@ -268,19 +268,20 @@ class LobbyClient:
             return False
 
     def handle_play_game(self, s: socket.socket):
-        print("=" * 50)
-        print("PLAY GAME".center(50))
-        print("=" * 50)
-        print("1. Create Room")
-        print("2. List All Rooms")
-        print("3. Back to Main Menu")
-        cmd = input("Choose action: ").strip()
-        if cmd == "1":
-            self.handle_create_room(s)
-        elif cmd == "2":
-            self.handle_list_rooms(s)
-        elif cmd == "3":
-            return
+        while True:
+            print("=" * 50)
+            print("PLAY GAME".center(50))
+            print("=" * 50)
+            print("1. Create Room")
+            print("2. List All Rooms")
+            print("3. Back to Main Menu")
+            cmd = input("Choose action: ").strip()
+            if cmd == "1":
+                self.handle_create_room(s)
+            elif cmd == "2":
+                self.handle_list_rooms(s)
+            elif cmd == "3":
+                break
 
     def handle_create_room(self, s: socket.socket):
         if len(self.users_game) == 0:

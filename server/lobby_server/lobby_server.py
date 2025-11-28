@@ -17,7 +17,7 @@ from common.type import (
     T_END_GAME,
     T_LIST_ROOMS,
 )
-from common.Packet.game import ListRoomsPacketReply
+from common.Packet.game import ListRoomsPacketReply, CreateRoomPacketReply
 from ..database_server.database_server import DatabaseServer
 import socket
 
@@ -29,8 +29,8 @@ class LobbyServer:
         self.logger = setup_logger("lobby_server", "logs/lobby_server.log")
         self.user_context = []  # List of UserContext
         self.room_context = [
-            RoomContext(1, 1, 4, "user1"),
-            RoomContext(2, 2, 4, "user2"),
+            RoomContext("1", "1", 4, "user1"),
+            RoomContext("2", "2", 4, "user2"),
         ]  # List of RoomContext
         self.database_server = DatabaseServer()
 
@@ -90,6 +90,7 @@ class LobbyServer:
             client.sendall(reply.to_bytes())
         elif packet.type == T_GET_GAME_DETAIL:
             reply = self.database_server.handle_get_game_detail(packet)
+            self.logger.info(f"Game detail: {reply.data['game_info']}")
             client.sendall(reply.to_bytes())
         elif packet.type == T_GAME_REVIEW:
             reply = self.database_server.handle_game_review(packet)
@@ -109,11 +110,13 @@ class LobbyServer:
         self.logger.info(f"Client {addr} created a room")
         username = packet.data["username"]
         game_id = packet.data["game_id"]
-        room_id = self.room_context[-1].room_id + 1 if self.room_context else 1
+        room_id = (
+            str(int(self.room_context[-1].room_id) + 1) if self.room_context else "1"
+        )
         max_players = self.database_server.get_game_max_players(game_id)
-        new_room_context = GameContext(room_id, game_id, max_players, username)
+        new_room_context = RoomContext(room_id, game_id, max_players, username)
         self.room_context.append(new_room_context)
-        reply = CreateGamePacketReply(True, room_id)
+        reply = CreateRoomPacketReply(True, room_id)
         return reply
 
     def _handle_list_rooms(
