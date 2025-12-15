@@ -1,0 +1,30 @@
+# Python 標準庫已包含所有必要模組
+# 本專案不需要額外安裝第三方套件
+
+# 以下為專案使用的標準庫模組（無需安裝）：
+# - socket: 網路通訊
+# - threading: 多線程處理
+# - json: JSON 資料處理
+# - logging: 日誌記錄
+# - tkinter: GUI 介面（某些遊戲使用）
+# - subprocess: 子程序管理
+# - pathlib: 路徑處理
+# - hashlib: 雜湊運算
+# - base64: Base64 編碼
+# - datetime: 日期時間處理
+# - os, sys: 系統操作
+# - select: I/O 多工
+# - random: 隨機數生成
+# - time: 時間處理
+# - math: 數學運算
+
+# Python 版本要求
+# Python >= 3.7
+
+# 注意事項：
+# 1. tkinter 在某些 Linux 系統上需要單獨安裝：
+#    Ubuntu/Debian: sudo apt-get install python3-tk
+#    CentOS/RHEL: sudo yum install python3-tkinter
+#    macOS: 通常已內建
+#
+# 2. 請確保 Python 版本 >= 3.7

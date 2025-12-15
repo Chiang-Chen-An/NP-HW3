@@ -183,8 +183,8 @@ class DeveloperClient:
         print("=" * 50)
         print("UPLOAD GAME".center(50))
         print("=" * 50)
-        game_name = input("Game Name: ").strip()
-        game_description = input("Game Description: ").strip()
+        game_name = " "
+        game_description = " "
         game_file_path = input("Game File Path: ").strip()
 
         if not self._validate_game_folder(game_file_path):
@@ -259,13 +259,82 @@ class DeveloperClient:
         print("=" * 50)
         print("UPDATE GAME".center(50))
         print("=" * 50)
-        # TODO: List games first to let user choose? For now, ask for ID.
-        game_id = input("Game ID: ").strip()
-        game_version = input("New Version: ").strip()
+        
+        # 先列出開發者的遊戲
+        packet = ListDeveloperGamesPacket(self.user_context.username)
+        s.sendall(packet.to_bytes())
+        reply = Packet.receive(s)
+        
+        if not reply or reply.type != T_LIST_DEVELOPER_GAMES or not reply.data["success"]:
+            print("ERROR: Failed to retrieve your games")
+            input("Press Enter to continue...")
+            return
+        
+        my_games = reply.data["games"]
+        
+        if not my_games:
+            print("You haven't uploaded any games yet.")
+            print("Upload a game first before trying to update.")
+            input("Press Enter to continue...")
+            return
+        
+        # 顯示開發者的遊戲列表
+        print("\nYour Games:")
+        for i, game in enumerate(my_games, 1):
+            print(f"{i}. ID: {game['game_id']} | Name: {game['game_name']} | Version: {game['game_version']}")
+        print()
+        
+        game_id = input("Game ID to update: ").strip()
+        
+        # 驗證 game_id 是否屬於該開發者
+        current_game = None
+        for game in my_games:
+            if game['game_id'] == game_id:
+                current_game = game
+                break
+        
+        if not current_game:
+            print(f"\n❌ ERROR: Game ID '{game_id}' does not exist or does not belong to you.")
+            print("You can only update games that you have uploaded.")
+            input("Press Enter to continue...")
+            return
+        
         game_file_path = input("Game File Path: ").strip()
 
         if not self._validate_game_folder(game_file_path):
             return
+        
+        # 從 config.json 讀取新版本
+        config_path = os.path.join(game_file_path, "config.json")
+        try:
+            with open(config_path, "r") as f:
+                config = json.load(f)
+            game_version = config.get("game_version")
+            if not game_version:
+                print("\n❌ ERROR: 'game_version' field not found in config.json")
+                input("Press Enter to continue...")
+                return
+        except Exception as e:
+            print(f"\n❌ ERROR: Failed to read config.json: {e}")
+            input("Press Enter to continue...")
+            return
+        
+        # 檢查版本是否不同且更新
+        current_version = current_game['game_version']
+        if game_version == current_version:
+            print(f"\n❌ ERROR: New version ({game_version}) is the same as current version ({current_version})")
+            print("Please update the version in config.json before uploading.")
+            input("Press Enter to continue...")
+            return
+        
+        # 簡單的版本比較（假設使用語義版本 x.y.z）
+        if not self._is_version_newer(game_version, current_version):
+            print(f"\n❌ ERROR: New version ({game_version}) is not newer than current version ({current_version})")
+            print("The new version must be greater than the current version.")
+            input("Press Enter to continue...")
+            return
+        
+        print(f"\n✓ Version check passed: {current_version} → {game_version}")
 
         zip_path = self._zip_game_folder(game_file_path)
         if not zip_path:
@@ -346,6 +415,34 @@ class DeveloperClient:
                 input("Press Enter to continue...")
                 return False
         return True
+    
+    def _is_version_newer(self, new_version: str, current_version: str) -> bool:
+        """
+        比較兩個版本號，判斷 new_version 是否比 current_version 新
+        支援格式：x.y.z (例如: 1.0.0, 1.2.3)
+        """
+        try:
+            # 將版本號分割成數字列表
+            new_parts = [int(x) for x in new_version.split('.')]
+            current_parts = [int(x) for x in current_version.split('.')]
+            
+            # 補齊長度
+            max_len = max(len(new_parts), len(current_parts))
+            new_parts += [0] * (max_len - len(new_parts))
+            current_parts += [0] * (max_len - len(current_parts))
+            
+            # 逐位比較
+            for i in range(max_len):
+                if new_parts[i] > current_parts[i]:
+                    return True
+                elif new_parts[i] < current_parts[i]:
+                    return False
+            
+            # 完全相同
+            return False
+        except (ValueError, AttributeError):
+            # 如果無法解析版本號，使用字串比較
+            return new_version > current_version
 
     def _zip_game_folder(self, path: str) -> str:
         import shutil
