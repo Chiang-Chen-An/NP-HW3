@@ -1,0 +1,7 @@
+{
+    "game_name": "Rock Paper Scissors",
+    "game_description": "Classic rock-paper-scissors game for 2 players",
+    "game_version": "1.0.0",
+    "game_author": "NP Developer",
+    "max_players": 2
+}

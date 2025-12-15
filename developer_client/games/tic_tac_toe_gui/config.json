@@ -1,0 +1,7 @@
+{
+    "game_name": "Tic Tac Toe GUI",
+    "game_description": "Classic Tic Tac Toe game with graphical user interface!!!!!",
+    "game_version": "1.0.3",
+    "game_author": "NP Developer",
+    "max_players": 2
+}

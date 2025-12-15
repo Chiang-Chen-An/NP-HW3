@@ -1,0 +1,7 @@
+{
+    "game_name": "Number Bomb",
+    "game_description": "A thrilling number game where players take turns adding 1-3 to avoid reaching the bomb number!!!!",
+    "game_version": "1.0.1",
+    "game_author": "NP Developer",
+    "max_players": 3
+}
