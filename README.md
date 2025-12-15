@@ -28,6 +28,10 @@ make lobby_server
 在客戶端執行：
 
 ```bash
+# 虛擬環境
+conda create -n nphw3 python=3.13
+conda activate nphw3
+
 # 啟動大廳客戶端（玩家）
 make client
 
