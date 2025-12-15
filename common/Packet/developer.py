@@ -1,5 +1,16 @@
 from ..packet import Packet
-from ..type import T_DEVELOPER_LOGIN, T_DEVELOPER_LOGOUT, T_DEVELOPER_REGISTER
+from ..type import (
+    T_DEVELOPER_LOGIN,
+    T_DEVELOPER_LOGOUT,
+    T_DEVELOPER_REGISTER,
+    T_LIST_DEVELOPER_GAMES,
+    T_UPLOAD_GAME_INIT,
+    T_UPLOAD_GAME_CHUNK,
+    T_UPLOAD_GAME_FINISH,
+    T_UPDATE_GAME_INIT,
+    T_UPDATE_GAME_CHUNK,
+    T_UPDATE_GAME_FINISH,
+)
 
 
 class DeveloperLoginPacket(Packet):
@@ -68,57 +79,61 @@ class ListDeveloperGamesPacket(Packet):
         super().__init__(T_LIST_DEVELOPER_GAMES, {"username": username})
 
 
-class UploadGamePacket(Packet):
-    """
-    Upload game packet format:
-    {
-        "type": T_UPLOAD_GAME,
-        "data": {
-            "username": "username",
-            "game_name": "game_name",
-            "game_description": "game_description",
-            "game_file": "game_file"
-        }
-    }
-    """
-
+class UploadGameInitPacket(Packet):
     def __init__(
-        self, username: str, game_name: str, game_description: str, game_file: str
+        self, username: str, game_name: str, game_description: str, file_size: int
     ):
         super().__init__(
-            T_UPLOAD_GAME,
+            T_UPLOAD_GAME_INIT,
             {
                 "username": username,
                 "game_name": game_name,
                 "game_description": game_description,
-                "game_file": game_file,
+                "file_size": file_size,
             },
         )
 
 
-class UpdateGamePacket(Packet):
-    """
-    Update game packet format:
-    {
-        "type": T_UPDATE_GAME,
-        "data": {
-            "username": "username",
-            "game_name": "game_name",
-            "game_description": "game_description",
-            "game_file": "game_file"
-        }
-    }
-    """
-
-    def __init__(
-        self, username: str, game_name: str, game_description: str, game_file: str
-    ):
+class UploadGameChunkPacket(Packet):
+    def __init__(self, upload_id: str, chunk_data: str):
         super().__init__(
-            T_UPDATE_GAME,
+            T_UPLOAD_GAME_CHUNK,
+            {"upload_id": upload_id, "chunk_data": chunk_data},
+        )
+
+
+class UploadGameFinishPacket(Packet):
+    def __init__(self, upload_id: str, checksum: str):
+        super().__init__(
+            T_UPLOAD_GAME_FINISH,
+            {"upload_id": upload_id, "checksum": checksum},
+        )
+
+
+class UpdateGameInitPacket(Packet):
+    def __init__(self, username: str, game_id: str, game_version: str, file_size: int):
+        super().__init__(
+            T_UPDATE_GAME_INIT,
             {
                 "username": username,
-                "game_name": game_name,
-                "game_description": game_description,
-                "game_file": game_file,
+                "game_id": game_id,
+                "game_version": game_version,
+                "file_size": file_size,
             },
+        )
+
+
+class UpdateGameChunkPacket(Packet):
+    def __init__(self, upload_id: str, chunk_data: str):
+        super().__init__(
+            T_UPDATE_GAME_CHUNK,
+            {"upload_id": upload_id, "chunk_data": chunk_data},
+        )
+
+
+class UpdateGameFinishPacket(Packet):
+    def __init__(self, upload_id: str, checksum: str):
+        super().__init__(
+            T_UPDATE_GAME_FINISH,
+            {"upload_id": upload_id, "checksum": checksum},
         )

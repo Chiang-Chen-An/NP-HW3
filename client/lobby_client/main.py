@@ -2,7 +2,7 @@ from .lobby_client import LobbyClient
 
 
 def main():
-    lobby_client = LobbyClient("127.0.0.1", 12346)
+    lobby_client = LobbyClient("140.113.17.13", 12346)
     lobby_client.start()
 
 

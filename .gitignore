@@ -1,5 +1,6 @@
 logs
 *.json
+!config.json
 .env
 
 __pycache__
@@ -8,4 +9,4 @@ storage/
 
 download/
 
-workspace/
+games/

@@ -11,6 +11,10 @@ from common.type import (
     T_LIST_GAMES,
     T_GET_GAME_DETAIL,
     T_GAME_REVIEW,
+    T_DEVELOPER_LOGIN,
+    T_DEVELOPER_REGISTER,
+    T_DEVELOPER_LOGOUT,
+    T_LIST_DEVELOPER_GAMES,
 )
 from common.Packet.db import (
     DBLoginPacket,
@@ -29,7 +33,7 @@ from common.log_utils import setup_logger
 
 
 class DatabaseServer:
-    def __init__(self, port: int = 12345, host: str = "127.0.0.1"):
+    def __init__(self, port: int = 12345, host: str = "140.113.17.13"):
         self.port = port
         self.host = host
         self.database = {
@@ -98,7 +102,15 @@ class DatabaseServer:
             users = json.load(f)
 
         for user in users:
-            if user["username"] == username and user["password"] == password:
+            if user["username"] == username:
+                if user["password"] != password:
+                    self.logger.info("Login failed - incorrect password")
+                    return DBLoginPacket(False, "Incorrect password")
+                # Check if already logged in
+                if user.get("is_online", False):
+                    self.logger.info(f"User {username} already logged in")
+                    return DBLoginPacket(False, "Account already logged in from another session")
+                # Login successful
                 user["is_online"] = True
                 user["last_login"] = datetime.now().isoformat()
                 with open(self.database["user"], "w") as f:
@@ -106,8 +118,8 @@ class DatabaseServer:
                 self.logger.info("Login successful")
                 return DBLoginPacket(True, "Login successful")
 
-        self.logger.info("Login failed")
-        return DBLoginPacket(False, "Login failed")
+        self.logger.info("Login failed - user not found")
+        return DBLoginPacket(False, "User not found")
 
     def handle_register(self, packet: Packet):
         username = packet.data["username"]
@@ -181,12 +193,18 @@ class DatabaseServer:
         game_id = packet.data["game_id"]
         score = packet.data["score"]
         comment = packet.data["comment"]
+        username = packet.data.get("username", "anonymous")
+        
+        # Validate score
+        if not (1 <= score <= 5):
+            return DBGameReviewPacket(False, "Rating must be between 1 and 5")
+        
         with open(self.database["game"], "r") as f:
             games = json.load(f)
         for game in games:
             if game["game_id"] == game_id:
                 game["comments"].append(
-                    {"username": "user", "rating": score, "comment": comment}
+                    {"username": username, "rating": score, "comment": comment}
                 )
                 with open(self.database["game"], "w") as f:
                     json.dump(games, f, indent=2)
@@ -231,7 +249,15 @@ class DatabaseServer:
         with open(self.database["developer"], "r") as f:
             developers = json.load(f)
         for developer in developers:
-            if developer["username"] == username and developer["password"] == password:
+            if developer["username"] == username:
+                if developer["password"] != password:
+                    self.logger.info("Login failed - incorrect password")
+                    return DBDeveloperLoginPacket(False, "Incorrect password")
+                # Check if already logged in
+                if developer.get("is_online", False):
+                    self.logger.info(f"Developer {username} already logged in")
+                    return DBDeveloperLoginPacket(False, "Account already logged in from another session")
+                # Login successful
                 developer["is_online"] = True
                 developer["last_login"] = datetime.now().isoformat()
                 with open(self.database["developer"], "w") as f:
@@ -239,8 +265,8 @@ class DatabaseServer:
                 self.logger.info("Login successful")
                 return DBDeveloperLoginPacket(True, "Login successful")
 
-        self.logger.info("Login failed")
-        return DBDeveloperLoginPacket(False, "Login failed")
+        self.logger.info("Login failed - developer not found")
+        return DBDeveloperLoginPacket(False, "Developer not found")
 
     def handle_developer_register(self, packet: Packet):
         username = packet.data["username"]
@@ -291,3 +317,106 @@ class DatabaseServer:
             if game["game_author"] == username:
                 developer_games.append(game)
         return ListDeveloperGamesPacket(True, developer_games)
+
+    def add_game_metadata(
+        self, username, game_name, game_description, game_version, max_players=2
+    ):
+        """添加遊戲元數據，自動生成數字 game_id
+        
+        Args:
+            username: 上傳者的 username (會成為 game_author)
+            game_name: 遊戲名稱 (從 config.json 讀取)
+            game_description: 遊戲描述 (從 config.json 讀取)
+            game_version: 遊戲版本 (從 config.json 讀取)
+            max_players: 最大玩家數 (從 config.json 讀取)
+        """
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+
+        # 自動生成遞增的數字 ID
+        if games:
+            max_id = max(int(game["game_id"]) for game in games)
+            new_game_id = str(max_id + 1)
+        else:
+            new_game_id = "1"
+
+        new_game = {
+            "game_id": new_game_id,
+            "game_name": game_name,
+            "game_description": game_description,
+            "game_version": game_version,
+            "game_author": username,  # 使用上傳者的 username
+            "download_count": 0,
+            "comments": [],
+            "game_created_at": datetime.now().isoformat(),
+            "max_players": max_players,  # 從 config.json 讀取
+        }
+        games.append(new_game)
+
+        with open(self.database["game"], "w") as f:
+            json.dump(games, f, indent=2)
+        
+        return new_game_id  # 返回生成的 ID
+
+    def update_game_metadata(self, game_id, game_version, game_name=None, game_description=None, max_players=None):
+        """更新遊戲元數據
+        
+        Args:
+            game_id: 遊戲 ID
+            game_version: 新版本號
+            game_name: 遊戲名稱（可選，從 config.json 讀取）
+            game_description: 遊戲描述（可選，從 config.json 讀取）
+            max_players: 最大玩家數（可選，從 config.json 讀取）
+        """
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+
+        for game in games:
+            if game["game_id"] == game_id:
+                game["game_version"] = game_version
+                # 如果提供了新的資訊，則更新
+                if game_name is not None:
+                    game["game_name"] = game_name
+                if game_description is not None:
+                    game["game_description"] = game_description
+                if max_players is not None:
+                    game["max_players"] = max_players
+                break
+
+        with open(self.database["game"], "w") as f:
+            json.dump(games, f, indent=2)
+
+    def delete_game_metadata(self, game_id, username):
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+
+        new_games = []
+        deleted = False
+        for game in games:
+            if game["game_id"] == game_id:
+                if game["game_author"] != username:
+                    return False, "You are not the author of this game"
+                deleted = True
+                continue
+            new_games.append(game)
+
+        if not deleted:
+            return False, "Game not found"
+
+        with open(self.database["game"], "w") as f:
+            json.dump(new_games, f, indent=2)
+
+        return True, "Game deleted successfully"
+
+    def increment_download_count(self, game_id):
+        """增加遊戲的下載次數"""
+        with open(self.database["game"], "r") as f:
+            games = json.load(f)
+
+        for game in games:
+            if game["game_id"] == game_id:
+                game["download_count"] = game.get("download_count", 0) + 1
+                break
+
+        with open(self.database["game"], "w") as f:
+            json.dump(games, f, indent=2)

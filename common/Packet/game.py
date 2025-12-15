@@ -19,9 +19,9 @@ class GetGameDetailPacket(Packet):
 
 
 class GameReviewPacket(Packet):
-    def __init__(self, game_id: str, score: int, comment: str):
+    def __init__(self, game_id: str, score: int, comment: str, username: str = "anonymous"):
         super().__init__(
-            T_GAME_REVIEW, {"game_id": game_id, "score": score, "comment": comment}
+            T_GAME_REVIEW, {"game_id": game_id, "score": score, "comment": comment, "username": username}
         )
 
 

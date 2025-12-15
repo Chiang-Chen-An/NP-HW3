@@ -11,6 +11,8 @@ from ..type import (
     T_DEVELOPER_LOGIN,
     T_DEVELOPER_REGISTER,
     T_DEVELOPER_LOGOUT,
+    T_LIST_DEVELOPER_GAMES,
+    T_UPLOAD_GAME,
 )
 
 
